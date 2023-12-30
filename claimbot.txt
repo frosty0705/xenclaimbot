@@ -1,0 +1,57 @@
+import asyncio
+from web3 import Web3
+
+# Ethereum connection setup
+w3 = Web3(Web3.HTTPProvider("node goes here"))
+
+# Replace with your contract address and ABI
+contract_address = "11111111111111111"
+contract_abi = [{"type": ...}]  # Replace with your contract's ABI
+
+private_key = "private key goes here"
+address = "wallet address goes here"
+
+async def get_owned_token_counts(address):
+    contract = w3.eth.contract(address=contract_address, abi=contract_abi)
+    token_counts = contract.functions.ownedTokens(address).call()
+    return token_counts
+
+async def bulk_claim_mint_reward(count, address, private_key):
+    account = w3.eth.account.from_key(private_key)
+    from_address = account.address
+
+    # Create the transaction
+    transaction = contract.functions.bulkClaimMintReward(count, address).build_transaction({
+        'from': from_address,
+        'gas': 8759555,  # Adjust the gas value accordingly
+        'nonce': w3.eth.get_transaction_count(from_address),
+        'chainId': 1111,  # Chain ID 
+        'type': '0x2',
+    })
+
+    # Sign the transaction
+    signed_transaction = w3.eth.account.sign_transaction(transaction, private_key)
+
+    # Send the transaction
+    tx_hash = w3.eth.send_raw_transaction(signed_transaction.rawTransaction)
+
+    # Wait for the transaction to be mined
+    receipt = w3.eth.wait_for_transaction_receipt(tx_hash)
+
+    print(f"Transaction hash (key {private_key[:6]}...): {tx_hash.hex()}")
+
+# Run the asynchronous tasks
+async def main():
+    account = w3.eth.account.from_key(private_key)
+    address = account.address
+
+    # Get the count values from owned tokens
+    owned_token_counts = get_owned_token_counts(address)
+
+    # Run bulk claim for each count
+    for count in owned_token_counts:
+        asyncio.gather(bulk_claim_rank(count, address, private_key))
+        asyncio.sleep(1)  # Adjust sleep duration as needed
+
+# Run the main asynchronous task
+asyncio.run(main())
