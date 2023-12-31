@@ -1,0 +1,72 @@
+import time
+from web3 import Web3
+from eth_account import Account
+from eth_account.messages import encode_defunct
+
+# Ethereum connection setup
+w3 = Web3(Web3.HTTPProvider("Add_rpc_here"))
+
+# Replace with your contract address and ABI
+contract_address = "111111111"
+contract_abi = 
+
+private_key = "put_private_key_here"
+address = "put_wallet_address_here"
+
+def get_owned_token_counts(contract):
+    transaction = contract.functions.ownedTokens().call({
+        'from': address,
+    })
+    return transaction
+	
+def bulk_claim_mint_reward(count, address, private_key, contract):
+    account = w3.eth.account.from_key(private_key)
+    from_address = account.address
+
+    try:
+        # Check if the tokens have already been redeemed
+        if not contract.functions.bulkClaimMintReward(count, address).call():
+            # Tokens have not been redeemed, proceed with claiming
+            # Create the transaction
+            transaction_dict = contract.functions.bulkClaimMintReward(count, address).build_transaction({
+                'from': from_address,
+                'gasPrice': w3.eth.gas_price,
+                'nonce': w3.eth.get_transaction_count(from_address),
+            })
+
+            # Sign the transaction
+            signed_transaction = w3.eth.account.sign_transaction(transaction_dict, private_key)
+
+            # Send the transaction
+            tx_hash = w3.eth.send_raw_transaction(signed_transaction.rawTransaction)
+            tx_receipt = w3.eth.wait_for_transaction_receipt(tx_hash)
+            print(f"Successfully claimed tokens with count {count}")
+            return tx_receipt
+
+        else:
+            print(f"Tokens with count {count} have already been redeemed. Skipping.")
+            return None
+
+    except Exception as e:
+        print(f"Error claiming tokens with count {count}: {e}")
+        return None
+
+
+def main():
+    account = w3.eth.account.from_key(private_key)
+    address = account.address
+
+    # Create the contract object
+    contract = w3.eth.contract(address=contract_address, abi=contract_abi)
+
+    # Get the count values from owned tokens
+    owned_token_counts = get_owned_token_counts(contract)
+
+    # Run bulk claim for each count
+    for count in owned_token_counts:
+        bulk_claim_mint_reward(count, address, private_key, contract)
+        print(f"Processing count: {count}")
+        time.sleep(3)  # Adjust sleep duration as needed
+
+# Run the main task
+main()
